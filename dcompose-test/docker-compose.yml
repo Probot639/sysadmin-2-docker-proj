@@ -1,0 +1,76 @@
+version: "3.9"
+
+services:
+  app-bridge:
+    image: nginx:alpine
+    container_name: app-bridge
+    ports:
+      - "8080:80"
+    volumes:
+      - ./app-bridge/html:/usr/share/nginx/html:ro
+    networks:
+      - bridge-net
+    depends_on:
+      - db-bridge
+
+  # Database only reachable by the bridge, so no published ports
+  db-bridge:
+    image: mariadb:11
+    container_name: db-bridge
+    environment:
+      - MARIADB_ROOT_PASSWORD=example-root
+      - MARIADB_DATABASE=demo
+      - MARIADB_USER=demo
+      - MARIADB_PASSWORD=demo-pass
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - bridge-net
+
+  # 3) Host-networked metrics container
+  metrics-host:
+    image: prom/node-exporter:latest
+    container_name: metrics-host
+    network_mode: host
+    # Node exporter listens on :9100 by default – accessible from LAN on host IP
+    restart: unless-stopped
+
+  # 4) Macvlan web server with its own LAN IP
+  lan-web-macvlan:
+    image: nginx:alpine
+    container_name: lan-web-macvlan
+    networks:
+      macvlan-net:
+        ipv4_address: 192.168.1.200   # Adjust to a free IP on your LAN
+    volumes:
+      - ./lan-web/html:/usr/share/nginx/html:ro
+    # No ports: it lives directly on the LAN with its own IP
+    restart: unless-stopped
+
+  # log server with no network for the "none" category
+  offline-worker:
+    image: alpine:latest
+    container_name: offline-worker
+    network_mode: "none"
+    command: ["/bin/sh", "-c", "echo 'Processing logs...' && ls -l /logs && sleep 3600"]
+    volumes:
+      - ./logs:/logs:ro
+    restart: "no"
+
+networks:
+  bridge-net:
+    driver: bridge
+
+  macvlan-net:
+    driver: macvlan
+    driver_opts:
+      parent: wlan0
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24   # TODO: change this
+          gateway: 192.168.1.1     # TODO: router IP - change this or do something better idrc
+          ip_range: 192.168.1.192/27  # small range for macvlan containers
+
+volumes:
+  db_data:
+
