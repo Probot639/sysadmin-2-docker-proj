@@ -5,9 +5,11 @@ PROJECT="docker-net-lab"
 
 # === CHANGE THESE FOR YOUR LAN ===
 PARENT_IF="wlan0"           # physical interface
+                            # TODO change this interface depending on the computer this is running on
 SUBNET="192.168.1.0/24"     # LAN subnet
 GATEWAY="192.168.1.1"       # router IP
 MACVLAN_IP="192.168.1.200"  # a free IP in your LAN
+                            # These might also need to be changed but so far I haven't had to
 # ================================
 
 echo "[*] Building images..."
@@ -20,12 +22,13 @@ docker build -t ${PROJECT}-offline-worker ./offline-worker
 
 echo "[*] Creating networks..."
 
-# Bridge network for app + DB
+# create bridge network for app + DB
 if ! docker network inspect bridge-net; then
   docker network create bridge-net
 fi
 
-# Macvlan network for LAN-facing web container
+# create macvlan network for LAN-facing web container
+# as a reminder this is what allows the docker container to use the host's network instead of the regular docker one
 if ! docker network inspect macvlan-net; then
   docker network create -d macvlan \
     --subnet="${SUBNET}" \
@@ -40,7 +43,7 @@ docker rm -f app-bridge db-bridge metrics-host lan-web-macvlan offline-worker
 
 echo "[*] Starting containers..."
 
-# 1) DB on bridge-net (internal-only)
+# Run the database container on the bridge network and set up the env vars cause mariadb reasons
 docker run -d --name db-bridge \
   --network bridge-net \
   -e MARIADB_ROOT_PASSWORD=example-root \
@@ -49,29 +52,30 @@ docker run -d --name db-bridge \
   -e MARIADB_PASSWORD=demo-pass \
   ${PROJECT}-db-bridge
 
-# 2) App on bridge-net, published to host
+# website
 docker run -d --name app-bridge \
   --network bridge-net \
   -p 8080:80 \
   ${PROJECT}-app-bridge
 
-# 3) Host-networked metrics container
+# logs but useful
 docker run -d --name metrics-host \
   --network host \
   ${PROJECT}-metrics-host
 
-# 4) Macvlan web container with its own LAN IP
+# website but weirder cause its on my own IP an shit
 docker run -d --name lan-web-macvlan \
   --network macvlan-net \
   --ip "${MACVLAN_IP}" \
   ${PROJECT}-macvlan-web
 
-# 5) Offline worker with NO network, just a volume
+# make the logs do something idk
 docker run -d --name offline-worker \
   --network none \
   -v "$(pwd)/logs:/logs:ro" \
   ${PROJECT}-offline-worker
 
+# its very late and i wish i was more tired but i'm not so oh well
 echo
 echo "[*] All containers started."
 echo
