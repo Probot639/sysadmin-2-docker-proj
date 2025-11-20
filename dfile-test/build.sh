@@ -28,12 +28,12 @@ docker build -t ${PROJECT}-offline-worker ./offline-worker
 echo "[*] Creating networks..."
 
 # create bridge network for app + DB
-if ! docker network inspect bridge-net >/dev/null 2>&1; then
+if ! docker network inspect bridge-net; then
   docker network create bridge-net
 fi
 
-# create macvlan network for LAN-facing web container
-if ! docker network inspect macvlan-net >/dev/null 2>&1; then
+# create macvlan network for LAN that doesn't exist but does but will
+if ! docker network inspect macvlan-net; then
   docker network create -d macvlan \
     --subnet="${SUBNET}" \
     --gateway="${GATEWAY}" \
@@ -42,6 +42,8 @@ if ! docker network inspect macvlan-net >/dev/null 2>&1; then
 fi
 
 # create a host-side macvlan interface so the HOST can talk to macvlan containers
+# This shit is hell
+# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa
 if ! ip link show "${HOST_MACVLAN_IF}" >/dev/null 2>&1; then
   echo "[*] Creating host macvlan interface ${HOST_MACVLAN_IF} on ${PARENT_IF}..."
   sudo ip link add "${HOST_MACVLAN_IF}" link "${PARENT_IF}" type macvlan mode bridge

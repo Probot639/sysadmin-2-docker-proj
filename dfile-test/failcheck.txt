@@ -1,0 +1,18 @@
+== Docker Networking Lab Health Check ==
+[32m[PASS](B[m Docker daemon reachable
+[31m[FAIL](B[m Network 'bridge-net' is missing
+[31m[FAIL](B[m Network 'macvlan-net' is missing
+[32m[PASS](B[m Host macvlan interface 'macvlan0' exists
+[31m[FAIL](B[m Container 'app-bridge' is missing
+[31m[FAIL](B[m Container 'db-bridge' is missing
+[31m[FAIL](B[m Container 'metrics-host' is missing
+[31m[FAIL](B[m Container 'lan-web-macvlan' is missing
+[31m[FAIL](B[m Container 'offline-worker' is missing
+[31m[FAIL](B[m app-bridge NOT reachable at http://localhost:8080
+[31m[FAIL](B[m app-bridge cannot reach db-bridge over bridge-net
+[31m[FAIL](B[m metrics-host NOT reachable on http://127.0.0.1:9100/metrics
+[31m[FAIL](B[m lan-web-macvlan NOT reachable at http://129.21.136.169 from host
+[31m[FAIL](B[m offline-worker missing /logs volume
+[31m[FAIL](B[m offline-worker container is not running
+
+== Health check complete ==
