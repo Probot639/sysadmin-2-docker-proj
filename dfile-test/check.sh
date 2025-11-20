@@ -2,7 +2,10 @@
 set -euo pipefail
 
 PROJECT="docker-net-lab"
-MACVLAN_IP="192.168.1.200"   # keep this in sync with build.sh
+
+# keep these in sync with build.sh
+MACVLAN_IP="129.21.136.169"
+HOST_MACVLAN_IF="macvlan0"
 
 RED="$(tput setaf 1 || true)"
 GRN="$(tput setaf 2 || true)"
@@ -31,6 +34,13 @@ for net in bridge-net macvlan-net; do
     fail "Network '$net' is missing"
   fi
 done
+
+# 2.5) Host-side macvlan interface
+if ip link show "$HOST_MACVLAN_IF" >/dev/null 2>&1; then
+  pass "Host macvlan interface '$HOST_MACVLAN_IF' exists"
+else
+  warn "Host macvlan interface '$HOST_MACVLAN_IF' missing (host -> macvlan container reachability may fail)"
+fi
 
 # 3) Containers running
 containers=(
@@ -79,31 +89,35 @@ if command -v curl >/dev/null 2>&1; then
   fi
 fi
 
-# 7) macvlan-web: best-effort check from host with timeout
-# If it hangs or fails, we *still* pass and note the timeout,
-# since host <-> macvlan often isn't directly reachable.
+# 7) macvlan-web: from host, should be reachable now that we have HOST_MACVLAN_IF
 if command -v curl >/dev/null 2>&1; then
   if curl --max-time 3 -fsS "http://${MACVLAN_IP}" >/dev/null 2>&1; then
     pass "lan-web-macvlan reachable at http://${MACVLAN_IP} from host"
   else
-    pass "lan-web-macvlan HTTP check timed out or failed from host (expected behavior for macvlan; continuing)"
+    fail "lan-web-macvlan NOT reachable at http://${MACVLAN_IP} from host"
   fi
+else
+  warn "curl not found; skipping macvlan HTTP check"
 fi
 
-# 8) offline-worker: verify no network + logs volume
+# 8) offline-worker: verify /logs volume
 if docker exec offline-worker ls /logs >/dev/null 2>&1; then
   pass "offline-worker has /logs volume mounted"
 else
   fail "offline-worker missing /logs volume"
 fi
 
-if docker exec offline-worker ping -c1 -W1 8.8.8.8 >/dev/null 2>&1; then
+# 9) offline-worker: verify container is up and has no Internet
+offline_id="$(docker ps -q -f name=^offline-worker)"
+
+if [ "${#offline_id}" -le 4 ]; then
+  fail "offline-worker container is not running"
+elif docker exec offline-worker ping -c1 -W1 8.8.8.8 >/dev/null 2>&1; then
   fail "offline-worker can ping Internet (expected NO network)"
 else
-  pass "offline-worker cannot ping Internet (network isolation working)"
+  pass "offline-worker is running and cannot ping Internet (network isolation working)"
 fi
 
 echo
 echo "== Health check complete =="
-
 

@@ -4,13 +4,18 @@ set -euo pipefail
 PROJECT="docker-net-lab"
 
 # === CHANGE THESE FOR YOUR LAN ===
-PARENT_IF="wlan0"           # physical interface
-                            # TODO change this interface depending on the computer this is running on
-SUBNET="192.168.1.0/24"     # LAN subnet
-GATEWAY="192.168.1.1"       # router IP
-MACVLAN_IP="192.168.1.200"  # a free IP in your LAN
-                            # These might also need to be changed but so far I haven't had to
+PARENT_IF="wlan0"              # physical interface
+
+SUBNET="129.21.136.0/22"       # LAN subnet (matches 129.21.136.168/22)
+GATEWAY="129.21.139.1"         # router IP (verify with: ip route | grep default)
+
+MACVLAN_IP="129.21.136.169"    # free IP on your LAN for the container
+HOST_MACVLAN_IF="macvlan0"     # host-side macvlan interface name
+HOST_MACVLAN_IP="129.21.136.170"  # another free IP on the same /22 for the host
 # ================================
+
+# derive prefix from SUBNET (e.g. "129.21.136.0/22" -> "22")
+SUBNET_PREFIX="${SUBNET##*/}"
 
 echo "[*] Building images..."
 
@@ -23,13 +28,12 @@ docker build -t ${PROJECT}-offline-worker ./offline-worker
 echo "[*] Creating networks..."
 
 # create bridge network for app + DB
-if ! docker network inspect bridge-net; then
+if ! docker network inspect bridge-net >/dev/null 2>&1; then
   docker network create bridge-net
 fi
 
 # create macvlan network for LAN-facing web container
-# as a reminder this is what allows the docker container to use the host's network instead of the regular docker one
-if ! docker network inspect macvlan-net; then
+if ! docker network inspect macvlan-net >/dev/null 2>&1; then
   docker network create -d macvlan \
     --subnet="${SUBNET}" \
     --gateway="${GATEWAY}" \
@@ -37,9 +41,17 @@ if ! docker network inspect macvlan-net; then
     macvlan-net
 fi
 
+# create a host-side macvlan interface so the HOST can talk to macvlan containers
+if ! ip link show "${HOST_MACVLAN_IF}" >/dev/null 2>&1; then
+  echo "[*] Creating host macvlan interface ${HOST_MACVLAN_IF} on ${PARENT_IF}..."
+  sudo ip link add "${HOST_MACVLAN_IF}" link "${PARENT_IF}" type macvlan mode bridge
+  sudo ip addr add "${HOST_MACVLAN_IP}/${SUBNET_PREFIX}" dev "${HOST_MACVLAN_IF}"
+  sudo ip link set "${HOST_MACVLAN_IF}" up
+fi
+
 echo "[*] Removing any old containers..."
 
-docker rm -f app-bridge db-bridge metrics-host lan-web-macvlan offline-worker
+docker rm -f app-bridge db-bridge metrics-host lan-web-macvlan offline-worker 2>/dev/null || true
 
 echo "[*] Starting containers..."
 
@@ -83,7 +95,7 @@ echo "Showing stuff off:"
 echo "- curl http://localhost:8080"
 echo "- docker network inspect bridge-net"
 echo "- curl http://localhost:9100/metrics"
-echo "- curl http://${MACVLAN_IP}"
+echo "- curl http://${MACVLAN_IP}     # from THIS HOST (via ${HOST_MACVLAN_IF})"
 echo "- docker logs offline-worker"
 echo "- docker exec -it app-bridge sh"
 echo "- and ^^ ping db-bridge"
