@@ -22,6 +22,7 @@ cat reminder.md
 ```
 
 ## File tree
+```bash
 .
 ├── dcompose-test
 │   ├── app-bridge
@@ -58,5 +59,5 @@ cat reminder.md
 │   ├── sample.log
 │   └── successcheck.txt
 └── README.md
-
+```
 16 directories, 20 files
