@@ -16,5 +16,47 @@ cd dfile-test
 ./build.sh
 # if you need a reminder
 cat reminder.md
+
+# to run automated health checks
+./check.sh
 ```
-- This one works pretty well for now
+
+## File tree
+.
+├── dcompose-test
+│   ├── app-bridge
+│   │   └── html
+│   │       └── index.html
+│   ├── docker-compose.yml
+│   ├── lan-web
+│   │   └── html
+│   │       └── index.html
+│   └── logs
+│       └── sample.log
+├── dfile-test
+│   ├── bridge-app
+│   │   ├── Dockerfile
+│   │   └── html
+│   │       └── index.html
+│   ├── bridge-db
+│   │   └── Dockerfile
+│   ├── build.sh
+│   ├── check.sh
+│   ├── clean.sh
+│   ├── failcheck.txt
+│   ├── logs
+│   ├── macvlan-web
+│   │   ├── Dockerfile
+│   │   └── html
+│   │       └── index.html
+│   ├── metrics-host
+│   │   └── Dockerfile
+│   ├── offline-worker
+│   │   ├── Dockerfile
+│   │   └── process-logs.sh
+│   ├── reminder.md
+│   ├── sample.log
+│   └── successcheck.txt
+└── README.md
+
+16 directories, 20 files
