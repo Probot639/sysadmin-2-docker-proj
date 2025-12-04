@@ -10,10 +10,14 @@ docker compose up
 - This is deprecated, i'm not going to be putting work into this
 
 ## Dockerfile method - Preferred method
+
+- Make sure the network interface is correct in either `build.sh` or `autobuild.sh`
+
 ```bash
 cd dfile-test
 ./clean.sh
-./build.sh
+./build.sh # to walk through the install
+./autobuild.sh # to do the install without stepping through it
 # if you need a reminder
 cat reminder.md
 
@@ -35,6 +39,7 @@ cat reminder.md
 │   └── logs
 │       └── sample.log
 ├── dfile-test
+│   ├── autobuild.sh
 │   ├── bridge-app
 │   │   ├── Dockerfile
 │   │   └── html
@@ -59,5 +64,6 @@ cat reminder.md
 │   ├── sample.log
 │   └── successcheck.txt
 └── README.md
+c
+16 directories, 21 files
 ```
-16 directories, 20 files
